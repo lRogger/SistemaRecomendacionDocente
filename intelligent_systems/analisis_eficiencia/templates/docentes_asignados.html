@@ -1,0 +1,89 @@
+{% extends 'layout/sidebar.html' %}
+
+{% block title %} Lista docentes asignados {% endblock %}
+
+{% block content %}
+<div class="container mx-auto mt-10">
+    <h1 class="text-3xl font-bold text-blue-700 text-center mb-8">Compatibilidad Docente - Materias</h1>
+    <div class="overflow-x-auto">
+        <table id="tabla-datos" class="table-auto w-full bg-white shadow-lg rounded-xl border border-blue-100">
+            <thead>
+                <tr class="bg-blue-200 text-blue-800">
+                    <th class="px-6 py-3 text-left text-sm font-semibold">Materias</th>
+                    <th class="px-6 py-3 text-left text-sm font-semibold">Docente asignado</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Encuesta Profesor (Conocimiento) AST</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Encuesta Estudiante (Satisfacción) AST</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">% AST</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Encuesta Profesor (Conocimiento) FL</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Encuesta Estudiante (Satisfacción) FL</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">% FL</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">% Compatibilidad</th>
+                    <!-- Neutrosofía Profesor -->
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Verdad Profesor (T)</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Indeterminación Profesor (I)</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Falsedad Profesor (F)</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Score Neutrosófico Profesor</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Deneutrosofía Profesor</th>
+                    <!-- Neutrosofía Estudiante -->
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Verdad Estudiante (T)</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Indeterminación Estudiante (I)</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Falsedad Estudiante (F)</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Score Neutrosófico Estudiante</th>
+                    <th class="px-6 py-3 text-center text-sm font-semibold">Deneutrosofía Estudiante</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Las filas serán añadidas dinámicamente aquí -->
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+    async function fetchResultados() {
+        try {
+            const response = await axios.get("{% url 'obtener_resultados_asignacion_docentes' %}");
+            const datos = response.data;
+
+            const tbody = document.querySelector("#tabla-datos tbody");
+            tbody.innerHTML = ""; // Limpiar la tabla antes de agregar nuevos datos
+
+            datos.forEach(({ materia, profesor, promedio_fl, promedio_ast , puntaje_promedio, puntaje_ast_prof, puntaje_fl_prof, puntaje_ast_est,
+                puntaje_fl_est, T_neutro_prof, I_neutro_prof, F_neutro_prof, score_neutro_prof, deneutrosophy_prof, T_neutro_est, I_neutro_est, F_neutro_est, score_neutro_est, deneutrosophy_est }) => {
+                const fila = document.createElement("tr");
+                fila.className = "border-b transition duration-300 ease-in-out bg-white hover:bg-blue-50";
+
+                fila.innerHTML = `
+                    <td class="px-6 py-4 text-blue-800 text-xs">${materia}</td>
+                    <td class="px-6 py-4 text-blue-800 text-xs">${profesor}</td>
+                    <td class="px-6 py-4 text-center text-blue-900 font-bold text-xs">${puntaje_ast_prof}%</td>
+                    <td class="px-6 py-4 text-center text-blue-900 font-bold text-xs">${puntaje_ast_est}%</td>
+                    <td class="px-6 py-4 text-center bg-blue-100 font-bold text-xs">${promedio_ast}%</td>
+                    <td class="px-6 py-4 text-center text-blue-900 font-bold text-xs">${puntaje_fl_prof}%</td>
+                    <td class="px-6 py-4 text-center text-blue-900 font-bold text-xs">${puntaje_fl_est}%</td>
+                    <td class="px-6 py-4 text-center bg-blue-100 font-bold text-xs">${promedio_fl}%</td>
+                    <td class="px-6 py-4 text-center bg-blue-300 font-bold text-xs">${puntaje_promedio}%</td>
+                    <!-- Neutrosofía Profesor -->
+                    <td class="px-6 py-4 text-center text-xs">${T_neutro_prof ?? ''}</td>
+                    <td class="px-6 py-4 text-center text-xs">${I_neutro_prof ?? ''}</td>
+                    <td class="px-6 py-4 text-center text-xs">${F_neutro_prof ?? ''}</td>
+                    <td class="px-6 py-4 text-center text-xs">${score_neutro_prof ?? ''}</td>
+                    <td class="px-6 py-4 text-center text-xs">${deneutrosophy_prof ?? ''}</td>
+                    <!-- Neutrosofía Estudiante -->
+                    <td class="px-6 py-4 text-center text-xs">${T_neutro_est ?? ''}</td>
+                    <td class="px-6 py-4 text-center text-xs">${I_neutro_est ?? ''}</td>
+                    <td class="px-6 py-4 text-center text-xs">${F_neutro_est ?? ''}</td>
+                    <td class="px-6 py-4 text-center text-xs">${score_neutro_est ?? ''}</td>
+                    <td class="px-6 py-4 text-center text-xs">${deneutrosophy_est ?? ''}</td>
+                `;
+
+                tbody.appendChild(fila);
+            });
+        } catch (error) {
+            console.error("Error fetching resultados:", error);
+        }
+    }
+
+    // Llamar la función para obtener datos al cargar la página
+    fetchResultados();
+</script>
+{% endblock %}

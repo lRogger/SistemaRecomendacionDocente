@@ -1,0 +1,557 @@
+{% extends 'layout/sidebar.html' %}
+
+{% block title %} Análisis de Eficiencia {% endblock %} {% block content %}
+
+<h1 class="text-3xl font-bold text-blue-700 text-center mb-8">Respuestas de Encuestas</h1>
+
+<div class="relative mb-8">
+    <input
+        type="text"
+        id="buscar-profesor"
+        class="block w-full p-3 border border-blue-100 rounded-lg shadow-sm focus:ring-blue-200 focus:border-blue-400 placeholder-gray-400"
+        placeholder="Buscar profesor..."
+    />
+    <ul
+        id="resultados"
+        class="absolute z-10 mt-2 w-full bg-white border border-blue-100 rounded-lg shadow-lg hidden"
+    >
+        <!-- Aquí se llenarán los resultados dinámicamente -->
+    </ul>
+</div>
+
+<!-- Sección: Respuestas de Profesores -->
+<div class="bg-white shadow-lg rounded-xl border border-blue-100 p-6 mb-8">
+    <h2 class="text-2xl font-semibold text-blue-600 mb-4">Respuestas de encuesta (Conocimiento) - Profesores</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div class="bg-blue-50 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-medium text-blue-700 mb-2">Lógica Difusa (FL)</h3>
+            <canvas id="profesores-logica-difusa" class="w-full h-64"></canvas>
+        </div>
+        <div class="bg-blue-50 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-medium text-blue-700 mb-2">Árbol de Sintaxis Abstracta (AST)</h3>
+            <canvas id="profesores-ast" class="w-full h-64"></canvas>
+        </div>
+        <div class="bg-blue-50 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-medium text-blue-700 mb-2">Comparación AST y FL (Profesores)</h3>
+            <canvas id="comparacion-encuesta-profesores" class="w-full h-64"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Sección: Respuestas de Estudiantes -->
+<div class="bg-white shadow-lg rounded-xl border border-blue-100 p-6 mb-8">
+    <h2 class="text-2xl font-semibold text-blue-600 mb-4">Respuestas de encuesta (Satisfacción) - Estudiantes</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div class="bg-blue-50 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-medium text-blue-700 mb-2">Lógica Difusa (FL)</h3>
+            <canvas id="estudiantes-logica-difusa" class="w-full h-64"></canvas>
+        </div>
+        <div class="bg-blue-50 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-medium text-blue-700 mb-2">Árbol de Sintaxis Abstracta (AST)</h3>
+            <canvas id="estudiantes-ast" class="w-full h-64"></canvas>
+        </div>
+        <div class="bg-blue-50 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-medium text-blue-700 mb-2">Comparación AST y FL (Estudiantes)</h3>
+            <canvas id="comparacion-encuesta-estudiantes" class="w-full h-64"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white shadow-lg rounded-xl border border-blue-100 p-6 mb-8">
+    <h2 class="text-2xl font-semibold text-blue-600 mb-4">Validación de resultados</h2>
+    <div class="flex flex-col md:flex-row py-4">
+        <div class="w-1/2">
+            <h3 class="font-semibold">TP = <span class="font-normal"> True Positive (Verdaderos Positivos) </span></h3>
+            <h3 class="font-semibold">FP = <span class="font-normal"> False Positive (Falsos Positivos) </span></h3>
+        </div>
+        <div class="w-1/2">
+            <h3 class="font-semibold">FN = <span class="font-normal"> False Negative (Falsos Negativos) </span></h3>
+            <h3 class="font-semibold">TN = <span class="font-normal"> True Negative (Verdaderos Negativos) </span></h3>
+        </div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div class="bg-blue-50 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-medium text-blue-700 mb-2">Matriz de Confusión (AST)</h3>
+            <div id="matrizAst" class="w-full h-64"></div>
+        </div>
+        <div class="bg-blue-50 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-medium text-blue-700 mb-2">Matriz de Confusión (FL)</h3>
+            <div id="matrizFl" class="w-full h-64"></div>
+        </div>
+        <div class="bg-blue-50 p-4 rounded-lg shadow">
+            <h3 class="text-lg font-medium text-blue-700 mb-2">Recall Comparativo</h3>
+            <canvas id="recallComparativo" class="w-full h-64"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- <canvas id="efficiencyChart"></canvas> -->
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("buscar-profesor");
+    const resultados = document.getElementById("resultados");
+    let debounceTimer; // Variable para almacenar el temporizador del debounce
+    let chartFLP
+    let chartPAST
+    let chartComparacion
+    
+    let chartEFL
+    let chartEAST
+    let chartComparacionEst
+
+
+    let chartMatrizAST
+    let chartMatrizFL
+    let chartRecall
+    
+    // Función para realizar la búsqueda
+    const buscarProfesores = (query) => {
+        if (query.length === 0) {
+            resultados.classList.add("hidden");
+            return;
+        }
+
+        fetch(`/api/academico/buscar-profesores/?q=${encodeURIComponent(query)}`)
+            .then((response) => response.json())
+            .then((data) => {
+                resultados.innerHTML = ""; // Limpia los resultados anteriores
+                if (data.length > 0) {
+                    resultados.classList.remove("hidden");
+                    data.forEach((profesor) => {
+                        const li = document.createElement("li");
+                        li.textContent = profesor.nombre; // Muestra el nombre completo
+                        li.className = "p-2 hover:bg-indigo-100 cursor-pointer";
+                        li.addEventListener("click", async () => {
+                            try {
+                                input.value = profesor.nombre;
+                                resultados.classList.add("hidden");
+                                const response = await axios.get(`/api/analisis-eficiencia/resultados-encuesta-profesor/?id=${profesor.id}`);
+                                const dataProfesorFL = response.data.fl_values;
+                                const profesores = [...new Set(dataProfesorFL.map((r) => r.profesor))];
+                                const materias = [...new Set(dataProfesorFL.map((r) => r.materia))];
+                                const datosPorProfesor = profesores.map((profesor) => {
+                                    return {
+                                        label: profesor,
+                                        data: materias.map((materia) => {
+                                        const item = dataProfesorFL.find(
+                                            (r) => r.profesor === profesor && r.materia === materia
+                                        );
+                                        return item ? item.probabilidad : 0; // Devuelve 0 si no hay datos
+                                        }),
+                                        backgroundColor: `rgba(${Math.random() * 255}, ${
+                                        Math.random() * 255
+                                        }, ${Math.random() * 255}, 0.5)`,
+                                    };
+                                });
+                                // Configuración del gráfico
+
+                                const ctxFLP = document
+                                .getElementById("profesores-logica-difusa")
+                                .getContext("2d");
+
+                                if(chartFLP){
+                                    chartFLP.destroy();
+                                    chartPAST.destroy();
+                                    chartComparacion.destroy();
+                                    chartEFL.destroy();
+                                    chartEAST.destroy();
+                                    chartComparacionEst.destroy();
+                                    chartRecall.destroy();
+                                }
+                                chartFLP = new Chart(ctxFLP, {
+                                type: "bar",
+                                data: {
+                                    labels: materias, // Materias en el eje X
+                                    datasets: datosPorProfesor, // Conjuntos de datos por profesor
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: {
+                                        legend: { position: "top" },
+                                        tooltip: { enabled: true },
+                                    },
+                                    scales: {
+                                        x: { title: { display: true, text: "Materias" } },
+                                        y: { title: { display: true, text: "Probabilidad" }, suggestedMax: 100, suggestedMin: 0},
+                                    },
+                                },
+                                });
+
+                                const dataProfesorAST = response.data.ast_values;
+                                const profesoresPAST= [...new Set(dataProfesorAST.map((r) => r.profesor))];
+                                const materiasPAST = [...new Set(dataProfesorAST.map((r) => r.materia))];
+                                const datosPorProfesorAST = profesoresPAST.map((profesor) => {
+                                    return {
+                                        label: profesor,
+                                        data: materiasPAST.map((materia) => {
+                                        const item = dataProfesorAST.find(
+                                            (r) => r.profesor === profesor && r.materia === materia
+                                        );
+                                        return item ? item.probabilidad : 0; // Devuelve 0 si no hay datos
+                                        }),
+                                        backgroundColor: `rgba(${Math.random() * 255}, ${
+                                        Math.random() * 255
+                                        }, ${Math.random() * 255}, 0.5)`,
+                                    };
+                                });
+                                // Configuración del gráfico
+                                const ctxPAST = document
+                                .getElementById("profesores-ast")
+                                .getContext("2d");
+                                chartPAST = new Chart(ctxPAST, {
+                                type: "bar",
+                                data: {
+                                    labels: materiasPAST, // Materias en el eje X
+                                    datasets: datosPorProfesorAST, // Conjuntos de datos por profesor
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: {
+                                        legend: { position: "top" },
+                                        tooltip: { enabled: true },
+                                    },
+                                    scales: {
+                                        x: { title: { display: true, text: "Materias" } },
+                                        y: { title: { display: true, text: "Probabilidad" }, suggestedMax: 100, suggestedMin: 0},
+                                    },
+                                },
+                                });
+                                
+                            
+                                const dataComparacion = [...new Set(response.data.comparation_values)];
+                                const labels = [...new Set(dataComparacion.map(item => item.materia))];
+                                const astData = dataComparacion.filter(item => item.algoritmo === 'Árbol de Sintaxis Abstracta').map(item => item.probabilidad);
+                                const lfData = dataComparacion.filter(item => item.algoritmo === 'Lógica Difusa').map(item => item.probabilidad);
+                                const ctxComparacion = document.getElementById('comparacion-encuesta-profesores').getContext('2d');
+                                chartComparacion = new Chart(ctxComparacion, {
+                                type: 'bar',
+                                data: {
+                                    labels: labels,
+                                    datasets: [
+                                    {
+                                        label: 'Árbol de Sintaxis Abstracta',
+                                        data: astData,
+                                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                                    },
+                                    {
+                                        label: 'Lógica Difusa',
+                                        data: lfData,
+                                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                                    },
+                                    ],
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: {
+                                        legend: { position: "top" },
+                                        tooltip: { enabled: true },
+                                    },
+                                    scales: {
+                                        x: { title: { display: true, text: `Materias recomendadas al Docente: ${dataComparacion[0]?.profesor}` } },
+                                        y: { title: { display: true, text: "Probabilidad" }, suggestedMax: 100, suggestedMin: 0},
+                                    },
+                                },
+                                });
+                                
+                                const responseEstudiante = await axios.get(`/api/analisis-eficiencia/resultados-encuesta-estudiante/?id=${profesor.id}`);
+                                const dataEstudianteFL = responseEstudiante.data.fl_values;
+                                const estudiantesFL= [...new Set(dataEstudianteFL.map((r) => r.profesor))];
+                                const materiasEstudiantesFL = [...new Set(dataEstudianteFL.map((r) => r.materia))];
+                                const datosPorEstudianteFL = estudiantesFL.map((profesor) => {
+                                    return {
+                                        label: profesor,
+                                        data: materiasEstudiantesFL.map((materia) => {
+                                        const item = dataEstudianteFL.find(
+                                            (r) => r.profesor === profesor && r.materia === materia
+                                        );
+                                        return item ? item.probabilidad : 0; // Devuelve 0 si no hay datos
+                                        }),
+                                        backgroundColor: `rgba(${Math.random() * 255}, ${
+                                        Math.random() * 255
+                                        }, ${Math.random() * 255}, 0.5)`,
+                                    };
+                                });
+                                // Configuración del gráfico
+                                const ctxEFL = document
+                                .getElementById("estudiantes-logica-difusa")
+                                .getContext("2d");
+                                chartEFL = new Chart(ctxEFL, {
+                                type: "bar",
+                                data: {
+                                    labels: materiasEstudiantesFL, // Materias en el eje X
+                                    datasets: datosPorEstudianteFL, // Conjuntos de datos por profesor
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: {
+                                        legend: { position: "top" },
+                                        tooltip: { enabled: true },
+                                    },
+                                    scales: {
+                                        x: { title: { display: true, text: "Materias" } },
+                                        y: { title: { display: true, text: "Probabilidad" }, suggestedMax: 100, suggestedMin: 0},
+                                    },
+                                },
+                                });
+
+                                
+                                const dataEstudianteAST = responseEstudiante.data.ast_values;
+                                const estudiantesAST= [...new Set(dataEstudianteAST.map((r) => r.profesor))];
+                                const materiasEstudiantesAST = [...new Set(dataEstudianteAST.map((r) => r.materia))];
+                                const datosPorEstudianteAST = estudiantesAST.map((profesor) => {
+                                    return {
+                                        label: profesor,
+                                        data: materiasEstudiantesAST.map((materia) => {
+                                        const item = dataEstudianteAST.find(
+                                            (r) => r.profesor === profesor && r.materia === materia
+                                        );
+                                        return item ? item.probabilidad : 0; // Devuelve 0 si no hay datos
+                                        }),
+                                        backgroundColor: `rgba(${Math.random() * 255}, ${
+                                        Math.random() * 255
+                                        }, ${Math.random() * 255}, 0.5)`,
+                                    };
+                                });
+                                // Configuración del gráfico
+                                const ctxEAST = document
+                                .getElementById("estudiantes-ast")
+                                .getContext("2d");
+                                chartEAST = new Chart(ctxEAST, {
+                                type: "bar",
+                                data: {
+                                    labels: materiasEstudiantesAST, // Materias en el eje X
+                                    datasets: datosPorEstudianteAST, // Conjuntos de datos por profesor
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: {
+                                        legend: { position: "top" },
+                                        tooltip: { enabled: true },
+                                    },
+                                    scales: {
+                                            x: { title: { display: true, text: "Materias" } },
+                                            y: { title: { display: true, text: "Probabilidad" }, suggestedMax: 100, suggestedMin: 0},
+                                        },
+                                    },
+                                });
+
+                                const dataComparacionEstudiante = [...new Set(responseEstudiante.data.comparation_values)];
+                                const labelsEst = [...new Set(dataComparacionEstudiante.map(item => item.materia))];
+                                const astDataEst = dataComparacionEstudiante.filter(item => item.algoritmo === 'Árbol de Sintaxis Abstracta').map(item => item.probabilidad);
+                                const lfDataEst = dataComparacionEstudiante.filter(item => item.algoritmo === 'Lógica Difusa').map(item => item.probabilidad);
+                                const ctxComparacionEst = document.getElementById('comparacion-encuesta-estudiantes').getContext('2d');
+                                chartComparacionEst = new Chart(ctxComparacionEst, {
+                                type: 'bar',
+                                data: {
+                                    labels: labelsEst,
+                                    datasets: [
+                                    {
+                                        label: 'Árbol de Sintaxis Abstracta',
+                                        data: astDataEst,
+                                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                                    },
+                                    {
+                                        label: 'Lógica Difusa',
+                                        data: lfDataEst,
+                                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                                    },
+                                    ],
+                                },
+                                options: {
+                                    responsive: true,
+                                    plugins: {
+                                        legend: { position: "top" },
+                                        tooltip: { enabled: true },
+                                    },
+                                    scales: {
+                                            x: { title: { display: true, text: `Materias recomendadas al Docente: ${dataComparacionEstudiante[0]?.profesor}` } },
+                                            y: { title: { display: true, text: "Probabilidad" }, suggestedMax: 100, suggestedMin: 0},
+                                        },
+                                    },
+                                });
+
+                                const respuestaMatrizConfucion = await axios.get(`/api/analisis-eficiencia/validacion-modelos/?id=${profesor.id}`)
+
+                                console.log(respuestaMatrizConfucion)
+
+                                // Escala de colores para la matriz
+                                const colorscale = [
+                                    [0, 'rgba(239, 68, 68, 0.8)'],  // Rojo para falsos
+                                    [0.5, 'rgba(255, 255, 255, 1)'], // Blanco como intermedio
+                                    [1, 'rgba(34, 197, 94, 0.8)']    // Verde para verdaderos
+                                ];
+
+                                const dataAST = respuestaMatrizConfucion.data.AST
+                                
+
+                                const labelsAST = ['Positivo Real', 'Negativo Real']; // Ejes
+                                const zAST = dataAST.matriz_confusion; // Matriz de confusión
+
+                                // Configuración del layout
+                                const layoutAST = {
+                                    title: `${'AST'}<br>Recall: ${dataAST.recall?.toFixed(2)}`,
+                                    xaxis: {
+                                        title: 'Valores Predicción',
+                                        tickvals: [0, 1],
+                                        ticktext: ['Positivo', 'Negativo']
+                                    },
+                                    yaxis: {
+                                        title: 'Valores Reales',
+                                        tickvals: [0, 1],
+                                        ticktext: ['Positivo', 'Negativo'],
+                                        autorange: 'reversed' // Invierte el eje Y
+                                    },
+                                    annotations: [],
+                                    margin: { t: 50 }
+                                };
+
+                                
+
+                                // Añadir anotaciones en las celdas
+                                for (let i = 0; i < zAST.length; i++) {
+                                    for (let j = 0; j < zAST[i].length; j++) {
+                                        const value = zAST[i][j];
+                                        layoutAST.annotations.push({
+                                            x: j,
+                                            y: i,
+                                            text: value,
+                                            font: {
+                                                size: 16,
+                                                color: 'black'
+                                            },
+                                            showarrow: false
+                                        });
+                                    }
+                                }
+
+                                const dataPlotAST = [{
+                                    z: zAST,
+                                    x: labelsAST,
+                                    y: labelsAST,
+                                    type: 'heatmap',
+                                    colorscale: colorscale,
+                                    showscale: false // Oculta la barra de escala
+                                }];
+
+                                Plotly.newPlot('matrizAst', dataPlotAST, layoutAST, { responsive: true });
+                                
+                                const dataFL = respuestaMatrizConfucion.data.FL
+
+                                const labelsFL = ['Positivo Real', 'Negativo Real']; // Ejes
+                                const zFL = dataFL.matriz_confusion; // Matriz de confusión
+
+                                // Configuración del layout
+                                const layoutFL = {
+                                    title: `${'FL'}<br>Recall: ${dataFL.recall?.toFixed(2)}`,
+                                    xaxis: {
+                                        title: 'Valores Predicción',
+                                        tickvals: [0, 1],
+                                        ticktext: ['Positivo', 'Negativo']
+                                    },
+                                    yaxis: {
+                                        title: 'Valores Reales',
+                                        tickvals: [0, 1],
+                                        ticktext: ['Positivo', 'Negativo'],
+                                        autorange: 'reversed' // Invierte el eje Y
+                                    },
+                                    annotations: [],
+                                    margin: { t: 50 }
+                                };
+
+                                
+
+                                // Añadir anotaciones en las celdas
+                                for (let i = 0; i < zFL.length; i++) {
+                                    for (let j = 0; j < zFL[i].length; j++) {
+                                        const value = zFL[i][j];
+                                        layoutFL.annotations.push({
+                                            x: j,
+                                            y: i,
+                                            text: value,
+                                            font: {
+                                                size: 16,
+                                                color: 'black'
+                                            },
+                                            showarrow: false
+                                        });
+                                    }
+                                }
+
+                                const dataPlotFL = [{
+                                    z: zFL,
+                                    x: labelsFL,
+                                    y: labelsFL,
+                                    type: 'heatmap',
+                                    colorscale: colorscale,
+                                    showscale: false // Oculta la barra de escala
+                                }];
+
+                                Plotly.newPlot('matrizFl', dataPlotFL, layoutFL, { responsive: true });
+                                
+
+                                chartRecall = document.getElementById('recallComparativo').getContext('2d');
+                                chartRecall = new Chart(recallComparativo, {
+                                    type: 'bar',
+                                    data: {
+                                        labels: ['AST', 'FL'],
+                                        datasets: [{
+                                            label: 'Recall',
+                                            data: [respuestaMatrizConfucion.data.AST.recall, respuestaMatrizConfucion.data.FL.recall],
+                                            backgroundColor: ['#3e95cd', '#8e5ea2']
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        scales: {
+                                            y: {
+                                                beginAtZero: true
+                                            }
+                                        }
+                                    }
+                                });
+                            
+                            } catch (error) {
+                                console.error(error)
+                                showSweetAlert('Error al cargar los datos', error?.response?.data?.error, 'error');
+                            }
+                        });
+                        resultados.appendChild(li);
+                    });
+                } else {
+                    resultados.classList.add("hidden");
+                }
+            })
+            .catch((error) => {
+                console.error("Error al buscar profesores:", error);
+            });
+    };
+
+ 
+
+    // Evento de entrada con debounce
+    input.addEventListener("input", () => {
+        clearTimeout(debounceTimer); // Limpia el temporizador anterior
+        const query = input.value.trim();
+
+        // Inicia un nuevo temporizador
+        debounceTimer = setTimeout( () => {
+            buscarProfesores(query); // Llama a la función después del retraso
+        }, 1000); 
+    });
+
+    // Ocultar la lista si el usuario hace clic fuera del componente
+    document.addEventListener("click", (e) => {
+        if (!input.contains(e.target) && !resultados.contains(e.target)) {
+            resultados.classList.add("hidden");
+        }
+    });
+});
+</script>
+
+
+{% endblock %}
+
+{% block script %}
+
+{% endblock %}
