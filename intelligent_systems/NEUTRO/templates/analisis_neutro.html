@@ -1,0 +1,132 @@
+{% extends 'layout/sidebar.html' %}
+
+{% load static %}
+
+{% block title %}Análisis Neutrosófico{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Análisis Neutrosófico</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Análisis de Profesores -->
+            <div class="bg-blue-50 rounded-lg p-6">
+                <div class="relative mb-8">
+                    <input
+                        type="text"
+                        id="buscar-profesor"
+                        class="block w-full p-3 border border-blue-100 rounded-lg shadow-sm focus:ring-blue-200 focus:border-blue-400 placeholder-gray-400"
+                        placeholder="Buscar profesor..."
+                    />
+                    <ul
+                        id="resultados"
+                        class="absolute z-10 mt-2 w-full bg-white border border-blue-100 rounded-lg shadow-lg hidden"
+                    >
+                        <!-- Aquí se llenarán los resultados dinámicamente -->
+                    </ul>
+                </div>
+                <button id="analizar_profesor" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                    Analizar Profesor
+                </button>
+                <div id="resultados_profesor" class="mt-4"></div>
+            </div>
+
+            <!-- Análisis de Estudiantes -->
+            <div class="bg-green-50 rounded-lg p-6">
+                <h2 class="text-xl font-semibold text-green-800 mb-4">Análisis de Estudiantes</h2>
+                <button id="analizar_estudiantes" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
+                    Analizar Estudiantes
+                </button>
+                <div id="resultados_estudiantes" class="mt-4"></div>
+            </div>
+        </div>
+
+        <!-- Explicación del Análisis Neutrosófico -->
+        <div class="mt-8 bg-gray-50 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">¿Qué es el Análisis Neutrosófico?</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                <div>
+                    <h4 class="font-medium text-blue-600 mb-2">T (Verdad)</h4>
+                    <p>Representa el grado de verdad o certeza en la evaluación. Un valor alto indica mayor confianza en la competencia del docente.</p>
+                </div>
+                <div>
+                    <h4 class="font-medium text-yellow-600 mb-2">I (Indeterminación)</h4>
+                    <p>Representa el grado de incertidumbre o ambigüedad. Un valor alto indica mayor variabilidad en las evaluaciones.</p>
+                </div>
+                <div>
+                    <h4 class="font-medium text-red-600 mb-2">F (Falsedad)</h4>
+                    <p>Representa el grado de falsedad o negación. Un valor alto indica menor competencia percibida.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("buscar-profesor");
+    const resultados = document.getElementById("resultados");
+    let debounceTimer; // Variable para almacenar el temporizador del debounce
+    // Función para realizar la búsqueda
+    const buscarProfesores = (query) => {
+        if (query.length === 0) {
+            resultados.classList.add("hidden");
+            return;
+        }
+
+        fetch(`/api/academico/buscar-profesores/?q=${encodeURIComponent(query)}`)
+            .then((response) => response.json())
+            .then((data) => {
+                resultados.innerHTML = ""; // Limpia los resultados anteriores
+                if (data.length > 0) {
+                    resultados.classList.remove("hidden");
+                    data.forEach((profesor) => {
+                        const li = document.createElement("li");
+                        li.textContent = profesor.nombre; // Muestra el nombre completo
+                        li.className = "p-2 hover:bg-indigo-100 cursor-pointer";
+                        li.addEventListener("click", async () => {
+                            try {
+                                input.value = profesor.nombre;
+                                resultados.classList.add("hidden");
+                                const response = await axios.get(`/api/analisis-eficiencia/resultados-encuesta-profesor/?id=${profesor.id}`);
+                                
+                                 
+                            } catch (error) {
+                                console.error(error)
+                                showSweetAlert('Error al cargar los datos', error?.response?.data?.error, 'error');
+                            }
+                        });
+                        resultados.appendChild(li);
+                    });
+                } else {
+                    resultados.classList.add("hidden");
+                }
+            })
+            .catch((error) => {
+                console.error("Error al buscar profesores:", error);
+            });
+    };
+
+ 
+
+    // Evento de entrada con debounce
+    input.addEventListener("input", () => {
+        clearTimeout(debounceTimer); // Limpia el temporizador anterior
+        const query = input.value.trim();
+
+        // Inicia un nuevo temporizador
+        debounceTimer = setTimeout( () => {
+            buscarProfesores(query); // Llama a la función después del retraso
+        }, 1000); 
+    });
+
+    // Ocultar la lista si el usuario hace clic fuera del componente
+    document.addEventListener("click", (e) => {
+        if (!input.contains(e.target) && !resultados.contains(e.target)) {
+            resultados.classList.add("hidden");
+        }
+    });
+});
+</script>
+{% endblock %} 

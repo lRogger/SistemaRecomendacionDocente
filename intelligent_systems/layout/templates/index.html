@@ -1,0 +1,29 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.25.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    {% tailwind_css %}
+</head>
+<body class="bg-white font-sans text-gray-900 min-h-screen">
+    {% if messages %}
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+        {% for message in messages %}
+            showSweetAlert("{{ message.tags|capfirst }}", "{{ message|escapejs }}", "{{ message.tags }}");
+        {% endfor %}
+        });
+    </script>
+    {% endif %}
+    {% block contenido %}{% endblock %}
+    <script src="{% static 'layout/js/sweetAlert.js' %}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

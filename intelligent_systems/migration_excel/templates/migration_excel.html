@@ -1,0 +1,65 @@
+{% extends 'layout/sidebar.html' %} 
+{% block title %} Migracion Encuestas {% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+  <div class="grid grid-cols-1 md:grid-cols-3 mb-8">
+    <div class="col-span-2">
+      <h1 class="text-3xl font-bold text-blue-700 mb-2">
+        Subir Archivo de Excel para los algoritmos de AST y FL
+      </h1>
+      <h2 class="text-xl font-medium text-blue-500">
+        (Arbol de Sintaxis Abstracta y Lógica Difusa)
+      </h2>
+    </div>
+    <div class="flex justify-end items-start">
+      <button
+        id="consume-endpoint"
+        class="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors font-semibold shadow"
+      >
+        Limpiar datos
+      </button>
+    </div>
+  </div>
+
+  <form method="POST" action="#" enctype="multipart/form-data" class="space-y-6">
+    {% csrf_token %} 
+    {% for field in form %}
+    <div class="bg-white p-8 rounded-xl shadow-lg border border-blue-100">
+      <label for="excel_file_students" class="block text-sm font-medium text-blue-700 mb-2">{{ field.label }}</label>    
+      {{ field }}
+      <small class="text-gray-500 mt-2 block">
+        Solo archivos con extensión .xlsx o .xls
+      </small>
+    </div>
+    {% endfor %}
+
+    <div class="mb-4">
+      <button
+        type="submit"
+        class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-semibold shadow"
+      >
+        Subir Archivos
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.getElementById("consume-endpoint").addEventListener("click", async function() {
+    try {
+      const response = await axios.post("{% url 'limpiar_tablas' %}", {}, {
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}'
+        }
+      })
+      if (response.status == 200) {
+        showSweetAlert('Transacción éxitosa', response.data.message, 'success');
+      } else {
+      }
+    } catch (error) {
+      showSweetAlert('Ocurrio un problema', error.message, 'error');
+    }
+  });
+</script>
+{% endblock %}
