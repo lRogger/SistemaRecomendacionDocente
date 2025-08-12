@@ -52,7 +52,7 @@ def obtener_resultados_encuesta_estudiantes(request):
     for item in top_ast:
         item['algoritmo'] = 'Árbol de Sintaxis Abstracta'
     for item in top_fl:
-        item['algoritmo'] = 'Lógica Difusa'
+        item['algoritmo'] = 'Lógica Neutrosófica'
 
 
     return JsonResponse({
@@ -88,7 +88,7 @@ def obtener_resultados_encuesta_profesores(request):
     for item in top_ast:
         item['algoritmo'] = 'Árbol de Sintaxis Abstracta'
     for item in top_fl:
-        item['algoritmo'] = 'Lógica Difusa'
+        item['algoritmo'] = 'Lógica Neutrosófica'
 
 
     return JsonResponse({
